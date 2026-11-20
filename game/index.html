@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar — an open-world crime game</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a1420; font-family: Arial, Helvetica, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 5; }
+  #topleft { position: absolute; top: 14px; left: 16px; }
+  #money { font-size: 28px; font-weight: bold; color: #7dd87d; }
+  #healthbar { width: 180px; height: 10px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.5); border-radius: 5px; margin-top: 6px; overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: #58d858; transition: width 0.2s; }
+  #stars { position: absolute; top: 12px; right: 18px; font-size: 30px; letter-spacing: 4px; }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 46%; text-align: center; font-size: 16px; font-weight: bold; background: rgba(0,0,0,0.45); padding: 8px 14px; border-radius: 8px; }
+  #minimap { position: absolute; left: 16px; bottom: 16px; width: 200px; height: 200px; border: 2px solid rgba(255,255,255,0.65); border-radius: 50%; background: #222; }
+  #speed { position: absolute; right: 20px; bottom: 20px; font-size: 26px; font-weight: bold; }
+  #subtitle { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); max-width: 70%; text-align: center; font-size: 18px; font-style: italic; background: rgba(0,0,0,0.55); padding: 8px 16px; border-radius: 8px; opacity: 0; transition: opacity 0.4s; }
+  #message { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); font-size: 34px; font-weight: bold; letter-spacing: 2px; color: #ffd76a; opacity: 0; transition: opacity 0.4s; text-align: center; white-space: nowrap; }
+  #prompt { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); font-size: 17px; font-weight: bold; background: rgba(0,0,0,0.55); padding: 7px 14px; border-radius: 8px; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #fff; border: 1px solid #000; display: none; }
+  #vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 120px 40px rgba(220,30,30,0.55); opacity: 0; }
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(6, 18, 32, 0.72); color: #fff; z-index: 10; text-align: center; padding: 20px; }
+  .overlay h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: #ffd76a; text-shadow: 0 3px 12px rgba(0,0,0,0.7); }
+  .overlay h2 { font-size: 20px; margin: 6px 0 18px; font-weight: normal; color: #cfe8ff; }
+  .overlay p { max-width: 640px; font-size: 16px; line-height: 1.55; color: #e8e8e8; }
+  .overlay .controls { font-size: 14px; line-height: 1.9; color: #c8d8e8; margin: 10px 0 18px; }
+  .overlay button { pointer-events: auto; cursor: pointer; font-size: 18px; font-weight: bold; color: #12202e; background: #ffd76a; border: none; border-radius: 8px; padding: 12px 28px; margin: 6px; }
+  .overlay button.secondary { background: #cfe8ff; }
+  #menu-save { color: #9fd89f; font-size: 15px; margin-bottom: 8px; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="Solmar: an open-world crime game. Drive, steal cars, outrun the police and run jobs for Dana."></canvas>
+<div id="hud">
+  <div id="topleft"><div id="money">$50</div><div id="healthbar"><div id="healthfill"></div></div></div>
+  <div id="stars">☆☆☆☆☆</div>
+  <div id="objective"></div>
+  <canvas id="minimap" width="200" height="200"></canvas>
+  <div id="speed"></div>
+  <div id="subtitle"></div>
+  <div id="message"></div>
+  <div id="prompt"></div>
+  <div id="crosshair"></div>
+  <div id="vignette"></div>
+</div>
+<div id="menu" class="overlay">
+  <h1>SOLMAR</h1>
+  <h2>A sun-soaked open-world crime game</h2>
+  <p>You are Rook, a driver with nothing but a borrowed jacket and a fast pair
+  of hands. Dana, a fixer with a phone full of trouble, has four jobs for you —
+  and Kessler, who owns the marina, is the man at the end of them. Steal cars,
+  outrun the Solmar police, and take the city for yourself.</p>
+  <div class="controls">
+    WASD — walk / drive &nbsp;·&nbsp; Mouse — look around (click to lock)<br>
+    E — enter / steal / exit a car &nbsp;·&nbsp; Space — brake &nbsp;·&nbsp; Shift — sprint<br>
+    Q — draw / holster pistol &nbsp;·&nbsp; Click — punch / shoot &nbsp;·&nbsp; F — punch<br>
+    P — pause &nbsp;·&nbsp; M — mute sound
+  </div>
+  <div id="menu-save"></div>
+  <div>
+    <button id="btn-play">New story</button>
+    <button id="btn-continue" class="secondary">Continue</button>
+  </div>
+  <p style="font-size:13px;color:#9fb8cc">Progress saves to this browser automatically. An original game: every name,
+  place and face in Solmar is invented, and no part of it comes from another game.</p>
+</div>
+<div id="pause" class="overlay">
+  <h1 style="font-size:44px">PAUSED</h1>
+  <p>Solmar waits for no one — except right now.</p>
+  <div>
+    <button id="btn-resume">Resume</button>
+    <button id="btn-restart" class="secondary">Restart day</button>
+    <button id="btn-quit" class="secondary">Back to menu</button>
+  </div>
+</div>
+<div id="endcard" class="overlay">
+  <h1 id="end-title" style="font-size:52px">BUSTED</h1>
+  <p id="end-text"></p>
+  <div><button id="btn-respawn">Back on the streets</button></div>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
